@@ -44,10 +44,13 @@
 
         .cart-panel { position: fixed; bottom: 105px; right: 30px; background: #1a1a1a; width: 310px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 20px; border: 1px solid var(--dorado); display: none; z-index: 2500; }
         .cart-items { max-height: 200px; overflow-y: auto; margin-bottom: 15px; }
-        .item { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .btn-del { background: #ff4444; color: white; border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        
         .pay-opt { margin: 15px 0; text-align: left; }
         .pay-opt select { width: 100%; padding: 8px; border-radius: 5px; background: #222; color: #fff; border: 1px solid var(--dorado); }
         .btn-confirm { background: #25d366; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .envio-info { font-size: 0.75rem; color: #aaa; margin-top: 5px; font-style: italic; display: block; }
     </style>
 </head>
 <body>
@@ -103,10 +106,13 @@
         <label style="color: var(--dorado);">Pago:</label>
         <select id="metodoPago"><option>Efectivo</option><option>Transferencia</option></select>
     </div>
-    <div style="display:flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px;">
-        <span>Total:</span><span id="totalTxt">$0.00</span>
+    <div style="text-align: right;">
+        <div style="display:flex; justify-content: space-between; font-weight: bold;">
+            <span>Total:</span><span id="totalTxt">$0.00 (Aproximado)</span>
+        </div>
+        <small class="envio-info">*El costo final depende de la zona de entrega</small>
     </div>
-    <button class="btn-confirm" onclick="enviarWA()">Confirmar Pedido</button>
+    <button class="btn-confirm" style="margin-top: 15px;" onclick="enviarWA()">Confirmar Pedido</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -127,7 +133,6 @@
     let prodsArr = [];
     let carritoArr = [];
 
-    // Cargar productos de Firebase corregido
     db.ref('productos').on('value', (snap) => {
         const div = document.getElementById('listaProductos');
         div.innerHTML = ''; prodsArr = [];
@@ -158,6 +163,11 @@
         actualizarUI();
     }
 
+    function eliminar(id) {
+        carritoArr = carritoArr.filter(x => x.id !== id);
+        actualizarUI();
+    }
+
     function actualizarUI() {
         const list = document.getElementById('cartItems');
         const b = document.getElementById('badge');
@@ -165,22 +175,39 @@
         list.innerHTML = '';
         carritoArr.forEach(i => {
             total += (i.precio * i.cant); n += i.cant;
-            list.innerHTML += `<div class="item"><span>${i.nombre} (x${i.cant})</span><span>$${i.precio * i.cant}</span></div>`;
+            list.innerHTML += `
+                <div class="item">
+                    <span>${i.nombre} (x${i.cant})</span>
+                    <span>
+                        $${(i.precio * i.cant).toFixed(2)}
+                        <button class="btn-del" onclick="eliminar('${i.id}')">X</button>
+                    </span>
+                </div>`;
         });
-        document.getElementById('totalTxt').innerText = `$${total.toFixed(2)}`;
+        document.getElementById('totalTxt').innerText = `$${total.toFixed(2)} (Aproximado)`;
         b.innerText = n; b.style.display = (n > 0) ? 'flex' : 'none';
     }
 
     function enviarWA() {
+        if(carritoArr.length === 0) return alert("El carrito está vacío");
+        
         const pago = document.getElementById('metodoPago').value;
-        let m = "¡Hola G&M Chocolate! 🍫 Pedido:%0A%0A";
-        let total = 0;
+        const numeroTel = "525656725040"; 
+        
+        let m = "¡Hola G&M Chocolate! 🍫 Quiero realizar un pedido:%0A%0A";
+        let subtotal = 0;
+        
         carritoArr.forEach(i => {
-            m += `• ${i.nombre} (x${i.cant}) - $${i.precio * i.cant}%0A`;
-            total += (i.precio * i.cant);
+            m += `• *${i.nombre}* (x${i.cant}) - $${(i.precio * i.cant).toFixed(2)}%0A`;
+            subtotal += (i.precio * i.cant);
         });
-        m += `%0A*Pago:* ${pago}%0A*Total: $${total.toFixed(2)}*`;
-        window.open(`https://wa.me/525656725040?text=${m}`, '_blank');
+
+        m += `%0A*Método de Pago:* ${pago}`;
+        m += `%0A*Subtotal productos:* $${subtotal.toFixed(2)} (Aproximado)`;
+        m += `%0A%0A_Nota: Entiendo que el precio final puede variar dependiendo de la zona de entrega. Quedo a la espera de la confirmación del costo de envío._`;
+        
+        const url = `https://api.whatsapp.com/send?phone=${numeroTel}&text=${m}`;
+        window.open(url, '_blank');
     }
 </script>
 </body>
