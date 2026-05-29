@@ -43,20 +43,22 @@
         #badge { position: absolute; top: -2px; right: -2px; background: #ff0000; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; display: none; align-items: center; justify-content: center; font-weight: bold; }
 
         .cart-panel { position: fixed; bottom: 105px; right: 30px; background: #1a1a1a; width: 310px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 20px; border: 1px solid var(--dorado); display: none; z-index: 2500; }
-        .cart-items { max-height: 200px; overflow-y: auto; margin-bottom: 15px; }
+        .cart-items { max-height: 150px; overflow-y: auto; margin-bottom: 15px; }
         .item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .btn-del { background: #ff4444; color: white; border: none; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px; }
         
-        .pay-opt { margin: 15px 0; text-align: left; }
-        .pay-opt select { width: 100%; padding: 8px; border-radius: 5px; background: #222; color: #fff; border: 1px solid var(--dorado); }
+        /* ESTILOS DEL NUEVO FORMULARIO */
+        .form-pedido input, .form-pedido textarea, .form-pedido select { width: 100%; box-sizing: border-box; padding: 8px; margin-bottom: 8px; border-radius: 5px; background: #222; color: #fff; border: 1px solid var(--dorado); font-family: 'Poppins', sans-serif;}
+        .form-pedido textarea { resize: none; height: 50px; }
+        
         .btn-confirm { background: #25d366; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .envio-info { font-size: 0.75rem; color: #aaa; margin-top: 5px; font-style: italic; display: block; }
+        .envio-info { font-size: 0.75rem; color: #aaa; margin-top: 5px; font-style: italic; display: block; text-align: right; }
     </style>
 </head>
 <body>
 
 <header class="hero">
-    <img src="https://lh3.googleusercontent.com/sitesv/AA5AbUCOc7NIfAZ__Yzu0uGyl-8dMps8aec6G7Ii_-H4hDJN-XG5hvVcbN3hERx-qs7H5GtPlqcFtSMUAwi5l5pLHSuOL-LGlpTh2zL6v_nKiKfCBpknE4NiBOSokWMJGbiU7mOqvZvJMSAuFRzPR2O24MaeuqIbahZwYLHelwIGCP_FYvC6i_cpWiSTy50=w16383" alt="Logo">
+    <img src="https://i.postimg.cc/4yfKKZCr/gym.jpg" alt="Logo">
     <h1>G&M CHOCOLATE</h1>
     <nav class="nav-menu">
         <a href="#">Inicio</a>
@@ -102,17 +104,22 @@
 <div id="panelCart" class="cart-panel">
     <h3 style="color: var(--dorado); margin-top:0;">Tu Pedido</h3>
     <div id="cartItems" class="cart-items"></div>
-    <div class="pay-opt">
-        <label style="color: var(--dorado);">Pago:</label>
-        <select id="metodoPago"><option>Efectivo</option><option>Transferencia</option></select>
+    
+    <div class="form-pedido">
+        <input type="text" id="cliNombre" placeholder="Tu Nombre Completo">
+        <input type="number" id="cliTel" placeholder="Teléfono de WhatsApp">
+        <textarea id="cliDir" placeholder="Dirección / Colonia para el envío"></textarea>
+        
+        <label style="color: var(--dorado); font-size: 0.9rem;">Pago preferido:</label>
+        <select id="metodoPago"><option>Efectivo contra entrega</option><option>Transferencia</option></select>
     </div>
-    <div style="text-align: right;">
-        <div style="display:flex; justify-content: space-between; font-weight: bold;">
-            <span>Total:</span><span id="totalTxt">$0.00 (Aproximado)</span>
-        </div>
-        <small class="envio-info">*El costo final depende de la zona de entrega</small>
+
+    <div style="display:flex; justify-content: space-between; font-weight: bold; margin-top: 10px;">
+        <span>Subtotal:</span><span id="totalTxt">$0.00</span>
     </div>
-    <button class="btn-confirm" style="margin-top: 15px;" onclick="enviarWA()">Confirmar Pedido</button>
+    <small class="envio-info">*El costo de envío se calculará en el siguiente paso.</small>
+    
+    <button class="btn-confirm" style="margin-top: 15px;" onclick="enviarPedido()">Enviar Pedido</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -184,30 +191,51 @@
                     </span>
                 </div>`;
         });
-        document.getElementById('totalTxt').innerText = `$${total.toFixed(2)} (Aproximado)`;
+        document.getElementById('totalTxt').innerText = `$${total.toFixed(2)}`;
         b.innerText = n; b.style.display = (n > 0) ? 'flex' : 'none';
     }
 
-    function enviarWA() {
+    function enviarPedido() {
         if(carritoArr.length === 0) return alert("El carrito está vacío");
         
+        const nombre = document.getElementById('cliNombre').value;
+        const tel = document.getElementById('cliTel').value;
+        const dir = document.getElementById('cliDir').value;
         const pago = document.getElementById('metodoPago').value;
-        const numeroTel = "525656725040"; 
-        
-        let m = "¡Hola G&M Chocolate! 🍫 Quiero realizar un pedido:%0A%0A";
+
+        if(!nombre || !tel || !dir) {
+            return alert("Por favor, llena tu Nombre, Teléfono y Dirección para continuar.");
+        }
+
         let subtotal = 0;
-        
-        carritoArr.forEach(i => {
-            m += `• *${i.nombre}* (x${i.cant}) - $${(i.precio * i.cant).toFixed(2)}%0A`;
+        const listaProductos = carritoArr.map(i => {
             subtotal += (i.precio * i.cant);
+            return { id: i.id, nombre: i.nombre, cant: i.cant, precio: i.precio };
         });
 
-        m += `%0A*Método de Pago:* ${pago}`;
-        m += `%0A*Subtotal productos:* $${subtotal.toFixed(2)} (Aproximado)`;
-        m += `%0A%0A_Nota: Entiendo que el precio final puede variar dependiendo de la zona de entrega. Quedo a la espera de la confirmación del costo de envío._`;
-        
-        const url = `https://api.whatsapp.com/send?phone=${numeroTel}&text=${m}`;
-        window.open(url, '_blank');
+        const nuevoPedido = {
+            cliente: nombre,
+            telefono: tel,
+            direccion: dir,
+            metodoPago: pago,
+            productos: listaProductos,
+            subtotal: subtotal,
+            estado: "Pendiente",
+            fecha: new Date().toLocaleString()
+        };
+
+        db.ref('pedidos_web').push(nuevoPedido).then(() => {
+            alert("¡Pedido recibido con éxito! En un momento te enviaremos por WhatsApp tu cotización con el costo de envío.");
+            carritoArr = [];
+            document.getElementById('cliNombre').value = '';
+            document.getElementById('cliTel').value = '';
+            document.getElementById('cliDir').value = '';
+            actualizarUI();
+            toggleCart();
+        }).catch(error => {
+            alert("Hubo un error al enviar tu pedido. Intenta de nuevo.");
+            console.error(error);
+        });
     }
 </script>
 </body>
